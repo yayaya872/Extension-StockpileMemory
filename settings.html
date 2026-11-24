@@ -1,0 +1,161 @@
+<div class="sm-settings">
+    <div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header">
+            <b>🧠 Stockpile Memory</b>
+            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        </div>
+        <div class="inline-drawer-content">
+
+            <div class="sm-row">
+                <label class="checkbox_label" for="sm_enabled">
+                    <input type="checkbox" id="sm_enabled" />
+                    <span>Enable Stockpile Memory</span>
+                </label>
+            </div>
+
+            <div class="sm-row">
+                <label class="checkbox_label" for="sm_auto_apply">
+                    <input type="checkbox" id="sm_auto_apply" />
+                    <span>Auto-Apply at Token Threshold</span>
+                    <small class="sm-hint">Summaries are stockpiled in the background without touching the prompt. When the visible chat history reaches the threshold below, all stockpiled summaries are swapped in at once — one cache break instead of many.</small>
+                </label>
+            </div>
+
+            <div class="sm-status-box" id="sm_status">—</div>
+
+            <div class="sm-button-row">
+                <button class="menu_button sm-act-apply" type="button">
+                    <i class="fa-solid fa-box-open"></i> Apply Now
+                </button>
+                <button class="menu_button sm-act-stockpile" type="button">
+                    <i class="fa-solid fa-bolt"></i> Summarize Now
+                </button>
+                <button class="menu_button sm-act-clear" type="button">
+                    <i class="fa-solid fa-trash"></i> Clear
+                </button>
+            </div>
+
+            <hr class="sm-divider" />
+
+            <h4 class="sm-section-title">📏 Thresholds</h4>
+
+            <div class="sm-row">
+                <label for="sm_threshold">
+                    <span>Apply Threshold (chat tokens, est.)</span>
+                    <small class="sm-hint">Visible chat-history tokens that trigger an auto-apply. For a 16k context, 11000–13000 works well.</small>
+                </label>
+                <input id="sm_threshold" type="number" class="text_pole" min="1000" step="500" />
+            </div>
+
+            <div class="sm-row">
+                <label for="sm_budget">
+                    <span>Memory Budget (tokens)</span>
+                    <small class="sm-hint">Maximum size of the injected summary block. When the applied summaries grow past this, the oldest ones are consolidated into a chapter summary.</small>
+                </label>
+                <input id="sm_budget" type="number" class="text_pole" min="500" step="250" />
+            </div>
+
+            <div class="sm-row">
+                <label for="sm_verbatim">
+                    <span>Verbatim Assistant Turns to Keep</span>
+                    <small class="sm-hint">The newest assistant turns are always sent word-for-word and never summarized.</small>
+                </label>
+                <input id="sm_verbatim" type="number" class="text_pole" min="1" step="1" />
+            </div>
+
+            <div class="sm-row">
+                <label for="sm_batch">
+                    <span>Turns per Summary Batch</span>
+                    <small class="sm-hint">Assistant turns summarized together into one stockpiled summary. One batch is built per reply in the background.</small>
+                </label>
+                <input id="sm_batch" type="number" class="text_pole" min="1" step="1" />
+            </div>
+
+            <hr class="sm-divider" />
+
+            <h4 class="sm-section-title">🔌 Summarizer Connection</h4>
+
+            <div class="sm-row">
+                <label for="sm_source">
+                    <span>Connection Source</span>
+                </label>
+                <select id="sm_source" class="text_pole">
+                    <option value="default">Default (Main API)</option>
+                    <option value="profile">Connection Profile</option>
+                    <option value="openai">OpenAI Compatible</option>
+                    <option value="ollama">Ollama</option>
+                </select>
+            </div>
+
+            <div class="sm-row">
+                <label for="sm_resp_len">
+                    <span>Summarizer Max Response Tokens (0 = default)</span>
+                </label>
+                <input id="sm_resp_len" type="number" class="text_pole" min="0" step="100" />
+            </div>
+
+            <div id="sm_profile_wrap" class="sm-sub-panel" style="display:none">
+                <div class="sm-row">
+                    <label for="sm_profile">
+                        <span>Connection Profile</span>
+                    </label>
+                    <select id="sm_profile" class="text_pole"></select>
+                </div>
+            </div>
+
+            <div id="sm_openai_wrap" class="sm-sub-panel" style="display:none">
+                <div class="sm-row">
+                    <label for="sm_oai_url"><span>API URL</span></label>
+                    <input id="sm_oai_url" type="text" class="text_pole" placeholder="https://example.com/v1" />
+                </div>
+                <div class="sm-row">
+                    <label for="sm_oai_key"><span>API Key</span></label>
+                    <input id="sm_oai_key" type="password" class="text_pole" placeholder="(optional)" />
+                </div>
+                <div class="sm-row">
+                    <label for="sm_oai_model"><span>Model</span></label>
+                    <input id="sm_oai_model" type="text" class="text_pole" placeholder="model-name" />
+                </div>
+            </div>
+
+            <div id="sm_ollama_wrap" class="sm-sub-panel" style="display:none">
+                <div class="sm-row">
+                    <label for="sm_ollama_url"><span>Ollama URL</span></label>
+                    <input id="sm_ollama_url" type="text" class="text_pole" placeholder="http://localhost:11434" />
+                </div>
+                <div class="sm-row">
+                    <label for="sm_ollama_model"><span>Model</span></label>
+                    <input id="sm_ollama_model" type="text" class="text_pole" placeholder="llama3.1" />
+                </div>
+            </div>
+
+            <hr class="sm-divider" />
+
+            <div class="inline-drawer">
+                <div class="inline-drawer-toggle inline-drawer-header">
+                    <b>📝 Summarizer Prompts</b>
+                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+                </div>
+                <div class="inline-drawer-content">
+                    <div class="sm-row">
+                        <label for="sm_sys_prompt"><span>Batch — System Prompt</span></label>
+                        <textarea id="sm_sys_prompt" class="text_pole sm-textarea" rows="2"></textarea>
+                    </div>
+                    <div class="sm-row">
+                        <label for="sm_user_prompt"><span>Batch — User Prompt</span>
+                            <small class="sm-hint">Placeholders: {{player_name}}, {{context_str}}, {{story_txt}}</small>
+                        </label>
+                        <textarea id="sm_user_prompt" class="text_pole sm-textarea" rows="8"></textarea>
+                    </div>
+                    <div class="sm-row">
+                        <label for="sm_consol_prompt"><span>Chapter Consolidation — User Prompt</span>
+                            <small class="sm-hint">Placeholder: {{summaries}}</small>
+                        </label>
+                        <textarea id="sm_consol_prompt" class="text_pole sm-textarea" rows="6"></textarea>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>

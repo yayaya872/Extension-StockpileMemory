@@ -1,0 +1,13 @@
+{
+    "author": "yayaya872",
+    "auto_update": true,
+    "css": "style.css",
+    "display_name": "Stockpile Memory",
+    "generate_interceptor": "stockpileMemoryInterceptor",
+    "homePage": "https://github.com/yayaya872/Extension-StockpileMemory",
+    "js": "index.js",
+    "loading_order": 60,
+    "optional": [],
+    "requires": [],
+    "version": "1.0.0"
+}
