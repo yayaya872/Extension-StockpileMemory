@@ -33,11 +33,27 @@ function noteError(where, e) {
 function reportDiag() {
     const el = document.getElementById('sm_diag');
     if (!el) return;
-    const fab = document.getElementById('sm-fab') ? 'OK' : 'NG';
-    const sheet = document.getElementById('sm-sheet') ? 'OK' : 'NG';
+    const fabEl = document.getElementById('sm-fab');
+    const sheetEl = document.getElementById('sm-sheet');
     const wand = document.getElementById('sm-wand-entry') ? 'OK' : 'NG';
-    el.textContent = `diag v1.0.2: fab=${fab} sheet=${sheet} wand=${wand}`
-        + (smErrors.length ? ` | errors: ${smErrors.slice(-3).join(' ; ')}` : ' | errors: none');
+    let geo = '';
+    try {
+        if (fabEl) {
+            const r = fabEl.getBoundingClientRect();
+            const cs = getComputedStyle(fabEl);
+            geo = ` | fabRect=${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)}`
+                + ` disp=${cs.display} vis=${cs.visibility} pos=${cs.position}`;
+        }
+        if (sheetEl) {
+            const cs2 = getComputedStyle(sheetEl);
+            geo += ` | sheetPos=${cs2.position} sheetDisp=${cs2.display}`;
+        }
+        geo += ` | win=${window.innerWidth}x${window.innerHeight}`;
+        if (window.visualViewport) geo += ` vv=${Math.round(window.visualViewport.width)}x${Math.round(window.visualViewport.height)}`;
+    } catch { /* diag must never throw */ }
+    el.textContent = `diag v1.0.3: fab=${fabEl ? 'OK' : 'NG'} sheet=${sheetEl ? 'OK' : 'NG'} wand=${wand}`
+        + (smErrors.length ? ` | errors: ${smErrors.slice(-3).join(' ; ')}` : ' | errors: none')
+        + geo;
 }
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function escapeHtml(str) {
@@ -650,7 +666,8 @@ function buildFabAndSheet() {
     // fails to load or is overridden by a theme.
     fab.style.cssText = 'position:fixed;right:14px;bottom:96px;width:52px;height:52px;'
         + 'border-radius:50%;background:#22242c;box-shadow:0 2px 10px rgba(0,0,0,0.5);'
-        + 'z-index:99999;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;';
+        + 'z-index:2147483647;display:block;visibility:visible;opacity:1;'
+        + 'cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;';
     fab.innerHTML = `
         <svg viewBox="0 0 48 48" class="sm-ring-svg" style="position:absolute;inset:2px;width:48px;height:48px;transform:rotate(-90deg);pointer-events:none">
             <circle class="sm-ring-bg" cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="3.5"></circle>
@@ -664,12 +681,15 @@ function buildFabAndSheet() {
 
     const backdrop = document.createElement('div');
     backdrop.id = 'sm-backdrop';
-    backdrop.style.display = 'none';
+    backdrop.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2147483646;';
     document.body.appendChild(backdrop);
 
     const sheet = document.createElement('div');
     sheet.id = 'sm-sheet';
-    sheet.style.display = 'none';
+    sheet.style.cssText = 'display:none;position:fixed;left:0;right:0;bottom:0;max-height:80dvh;'
+        + 'z-index:2147483647;background:#1e1e24;color:#eee;border-top:1px solid #555;'
+        + 'border-radius:14px 14px 0 0;flex-direction:column;overflow:hidden;'
+        + 'padding:10px 12px 14px;box-sizing:border-box;visibility:visible;opacity:1;';
     sheet.innerHTML = `
         <div class="sm-sheet-head">
             <b>🧠 Stockpile Memory</b>
@@ -742,7 +762,7 @@ function bindFabDrag(fab) {
 
 function buildWandMenuEntry() {
     if (document.getElementById('sm-wand-entry')) return;
-    const menu = document.getElementById('extensions_menu');
+    const menu = document.getElementById('extensionsMenu');
     if (!menu) return;
     const entry = document.createElement('div');
     entry.id = 'sm-wand-entry';
