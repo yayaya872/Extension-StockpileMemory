@@ -22,6 +22,23 @@ const LOG_PREFIX = '[StockpileMemory]';
 
 function log(...args) { console.log(LOG_PREFIX, ...args); }
 function warn(...args) { console.warn(LOG_PREFIX, ...args); }
+
+const smErrors = [];
+function noteError(where, e) {
+    const msg = (e && e.message) ? e.message : String(e);
+    smErrors.push(`${where}: ${msg}`);
+    warn(where, e);
+    reportDiag();
+}
+function reportDiag() {
+    const el = document.getElementById('sm_diag');
+    if (!el) return;
+    const fab = document.getElementById('sm-fab') ? 'OK' : 'NG';
+    const sheet = document.getElementById('sm-sheet') ? 'OK' : 'NG';
+    const wand = document.getElementById('sm-wand-entry') ? 'OK' : 'NG';
+    el.textContent = `diag v1.0.2: fab=${fab} sheet=${sheet} wand=${wand}`
+        + (smErrors.length ? ` | errors: ${smErrors.slice(-3).join(' ; ')}` : ' | errors: none');
+}
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function escapeHtml(str) {
     return String(str ?? '')
@@ -741,9 +758,18 @@ function buildWandMenuEntry() {
 }
 
 function openSheet() {
-    const sheet = document.getElementById('sm-sheet');
-    const backdrop = document.getElementById('sm-backdrop');
-    if (!sheet || !backdrop) return;
+    let sheet = document.getElementById('sm-sheet');
+    let backdrop = document.getElementById('sm-backdrop');
+    if (!sheet || !backdrop) {
+        try { buildFabAndSheet(); } catch (e) { noteError('openSheet/build', e); }
+        sheet = document.getElementById('sm-sheet');
+        backdrop = document.getElementById('sm-backdrop');
+    }
+    if (!sheet || !backdrop) {
+        toastr.error('Stockpile Memory: シート要素を作成できませんでした。設定ドロワーの diag 行を確認してください。');
+        reportDiag();
+        return;
+    }
     sheet.style.display = 'flex';
     backdrop.style.display = 'block';
     updateUI();
@@ -1044,11 +1070,26 @@ jQuery(async () => {
     } catch (e) {
         warn('settings template failed to load:', e);
     }
-    try { buildFabAndSheet(); } catch (e) { warn('buildFabAndSheet failed:', e); }
-    try { buildWandMenuEntry(); } catch (e) { warn('buildWandMenuEntry failed:', e); }
-    try { bindSettings(); } catch (e) { warn('bindSettings failed:', e); }
-    try { bindActions(); } catch (e) { warn('bindActions failed:', e); }
-    try { syncSettingsForm(); } catch (e) { warn('syncSettingsForm failed:', e); }
+    try { buildFabAndSheet(); } catch (e) { noteError('buildFabAndSheet', e); }
+    try { buildWandMenuEntry(); } catch (e) { noteError('buildWandMenuEntry', e); }
+    try { bindSettings(); } catch (e) { noteError('bindSettings', e); }
+    try { bindActions(); } catch (e) { noteError('bindActions', e); }
+    try { syncSettingsForm(); } catch (e) { noteError('syncSettingsForm', e); }
+    // Watchdog: if ST's own startup (or a theme/layout rebuild) removes the
+    // injected UI elements, recreate them. Runs for the first minute.
+    let smWatchTries = 0;
+    const smWatch = setInterval(() => {
+        smWatchTries++;
+        if (!document.getElementById('sm-fab')) {
+            try { buildFabAndSheet(); } catch (e) { noteError('watchdog/buildFabAndSheet', e); }
+        }
+        if (!document.getElementById('sm-wand-entry')) {
+            try { buildWandMenuEntry(); } catch (e) { /* menu may not exist yet */ }
+        }
+        reportDiag();
+        if (smWatchTries >= 60) clearInterval(smWatch);
+    }, 1000);
+    reportDiag();
     ctx.eventSource.on(ctx.eventTypes.MESSAGE_RECEIVED, onMessageReceived);
     ctx.eventSource.on(ctx.eventTypes.CHAT_CHANGED, onChatChanged);
     onChatChanged();
