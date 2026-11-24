@@ -46,7 +46,8 @@ function reportDiag() {
         }
         if (sheetEl) {
             const cs2 = getComputedStyle(sheetEl);
-            geo += ` | sheetPos=${cs2.position} sheetDisp=${cs2.display}`;
+            const sr = sheetEl.getBoundingClientRect();
+            geo += ` | sheetPos=${cs2.position} sheetDisp=${cs2.display} sheetRect=${Math.round(sr.left)},${Math.round(sr.top)} ${Math.round(sr.width)}x${Math.round(sr.height)}`;
         }
         geo += ` | win=${window.innerWidth}x${window.innerHeight}`;
         if (window.visualViewport) geo += ` vv=${Math.round(window.visualViewport.width)}x${Math.round(window.visualViewport.height)}`;
@@ -714,11 +715,27 @@ function applyFabPosition() {
     if (!fab) return;
     const s = getSettings();
     if (Number.isFinite(s.iconLeft) && Number.isFinite(s.iconTop)) {
-        fab.style.left = `${s.iconLeft}px`;
-        fab.style.top = `${s.iconTop}px`;
-        fab.style.right = 'auto';
-        fab.style.bottom = 'auto';
+        const w = fab.offsetWidth || 52;
+        const h = fab.offsetHeight || 52;
+        const ok = s.iconLeft > -w + 16 && s.iconLeft < window.innerWidth - 16
+            && s.iconTop >= 0 && s.iconTop < window.innerHeight - 16;
+        if (ok) {
+            fab.style.left = `${s.iconLeft}px`;
+            fab.style.top = `${s.iconTop}px`;
+            fab.style.right = 'auto';
+            fab.style.bottom = 'auto';
+            return;
+        }
+        // Saved position is outside this viewport (e.g. saved on another
+        // screen size, or a glitched drag): discard it.
+        delete s.iconLeft;
+        delete s.iconTop;
+        saveSettings();
     }
+    fab.style.left = 'auto';
+    fab.style.top = 'auto';
+    fab.style.right = '14px';
+    fab.style.bottom = '96px';
 }
 
 function bindFabDrag(fab) {
@@ -751,8 +768,8 @@ function bindFabDrag(fab) {
         if (moved) {
             const rect = fab.getBoundingClientRect();
             const s = getSettings();
-            s.iconLeft = Math.round(rect.left);
-            s.iconTop = Math.round(rect.top);
+            s.iconLeft = Math.round(Math.min(Math.max(0, rect.left), window.innerWidth - fab.offsetWidth));
+            s.iconTop = Math.round(Math.min(Math.max(0, rect.top), window.innerHeight - fab.offsetHeight));
             saveSettings();
         } else {
             openSheet();
