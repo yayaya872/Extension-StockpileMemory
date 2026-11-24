@@ -34,7 +34,7 @@ function reportDiag() {
     const el = document.getElementById('sm_diag');
     if (!el) return;
     const fabEl = document.getElementById('sm-fab');
-    const sheetEl = document.getElementById('sm-sheet');
+    const sheetEl = smSheetEl;
     const wand = document.getElementById('sm-wand-entry') ? 'OK' : 'NG';
     let geo = '';
     try {
@@ -44,15 +44,11 @@ function reportDiag() {
             geo = ` | fabRect=${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)}`
                 + ` disp=${cs.display} vis=${cs.visibility} pos=${cs.position}`;
         }
-        if (sheetEl) {
-            const cs2 = getComputedStyle(sheetEl);
-            const sr = sheetEl.getBoundingClientRect();
-            geo += ` | sheetPos=${cs2.position} sheetDisp=${cs2.display} sheetRect=${Math.round(sr.left)},${Math.round(sr.top)} ${Math.round(sr.width)}x${Math.round(sr.height)}`;
-        }
+        geo += ` | popup=${smPopupOpen ? 'open' : 'closed'}`;
         geo += ` | win=${window.innerWidth}x${window.innerHeight}`;
         if (window.visualViewport) geo += ` vv=${Math.round(window.visualViewport.width)}x${Math.round(window.visualViewport.height)}`;
     } catch { /* diag must never throw */ }
-    el.textContent = `diag v1.0.3: fab=${fabEl ? 'OK' : 'NG'} sheet=${sheetEl ? 'OK' : 'NG'} wand=${wand}`
+    el.textContent = `diag v1.1.0: fab=${fabEl ? 'OK' : 'NG'} sheet=${sheetEl ? 'OK' : 'NG'} wand=${wand}`
         + (smErrors.length ? ` | errors: ${smErrors.slice(-3).join(' ; ')}` : ' | errors: none')
         + geo;
 }
@@ -657,7 +653,11 @@ async function clearMemory() {
 
 const RING_C = 2 * Math.PI * 20;
 
+let smSheetEl = null;
+let smPopupOpen = false;
+
 function buildFabAndSheet() {
+    buildSheetContent();
     if (document.getElementById('sm-fab')) return;
 
     const fab = document.createElement('div');
@@ -680,34 +680,27 @@ function buildFabAndSheet() {
     applyFabPosition();
     bindFabDrag(fab);
 
-    const backdrop = document.createElement('div');
-    backdrop.id = 'sm-backdrop';
-    backdrop.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2147483646;';
-    document.body.appendChild(backdrop);
++ "'''" + ""}
 
-    const sheet = document.createElement('div');
-    sheet.id = 'sm-sheet';
-    sheet.style.cssText = 'display:none;position:fixed;left:0;right:0;bottom:0;max-height:80dvh;'
-        + 'z-index:2147483647;background:#1e1e24;color:#eee;border-top:1px solid #555;'
-        + 'border-radius:14px 14px 0 0;flex-direction:column;overflow:hidden;'
-        + 'padding:10px 12px 14px;box-sizing:border-box;visibility:visible;opacity:1;';
-    sheet.innerHTML = `
-        <div class="sm-sheet-head">
-            <b>🧠 Stockpile Memory</b>
-            <button class="sm-btn sm-sheet-close" type="button">✕</button>
-        </div>
-        <div class="sm-sheet-status" id="sm-sheet-status"></div>
+// The summary sheet is a plain content element shown through SillyTavern's
+// own Popup API. (A custom position:fixed sheet was displaced by exactly
+// one viewport height on the user's phone — ST's popup system is the
+// mobile-safe way to show overlay UI.)
+function buildSheetContent() {
+    if (smSheetEl) return smSheetEl;
+    const el = document.createElement('div');
+    el.className = 'sm-sheet-content';
+    el.innerHTML = `
+        <div class="sm-sheet-status"></div>
         <div class="sm-sheet-actions">
             <button class="sm-btn sm-act-apply" type="button">今すぐ反映</button>
             <button class="sm-btn sm-act-stockpile" type="button">要約を進める</button>
             <button class="sm-btn sm-act-clear sm-btn-danger" type="button">全てリセット</button>
         </div>
-        <div class="sm-list" id="sm-list"></div>`;
-    document.body.appendChild(sheet);
-
-    backdrop.addEventListener('click', closeSheet);
-    sheet.querySelector('.sm-sheet-close').addEventListener('click', closeSheet);
-    bindListEvents(sheet);
+        <div class="sm-list"></div>`;
+    bindListEvents(el);
+    smSheetEl = el;
+    return el;
 }
 
 function applyFabPosition() {
@@ -795,28 +788,25 @@ function buildWandMenuEntry() {
 }
 
 function openSheet() {
-    let sheet = document.getElementById('sm-sheet');
-    let backdrop = document.getElementById('sm-backdrop');
-    if (!sheet || !backdrop) {
-        try { buildFabAndSheet(); } catch (e) { noteError('openSheet/build', e); }
-        sheet = document.getElementById('sm-sheet');
-        backdrop = document.getElementById('sm-backdrop');
-    }
-    if (!sheet || !backdrop) {
-        toastr.error('Stockpile Memory: シート要素を作成できませんでした。設定ドロワーの diag 行を確認してください。');
-        reportDiag();
-        return;
-    }
-    sheet.style.display = 'flex';
-    backdrop.style.display = 'block';
+    if (smPopupOpen) return;
+    const el = buildSheetContent();
     updateUI();
-}
-
-function closeSheet() {
-    const sheet = document.getElementById('sm-sheet');
-    const backdrop = document.getElementById('sm-backdrop');
-    if (sheet) sheet.style.display = 'none';
-    if (backdrop) backdrop.style.display = 'none';
+    try {
+        const ctx = SillyTavern.getContext();
+        smPopupOpen = true;
+        const popup = new ctx.Popup(el, ctx.POPUP_TYPE.TEXT, '', {
+            wide: true,
+            large: true,
+            okButton: '閉じる',
+            allowVerticalScrolling: true,
+            onClose: () => { smPopupOpen = false; },
+        });
+        popup.show();
+    } catch (e) {
+        smPopupOpen = false;
+        noteError('openSheet/popup', e);
+        toastr.error('Stockpile Memory: ポップアップを開けませんでした。');
+    }
 }
 
 function formatDate(ts) {
@@ -839,7 +829,7 @@ function originalHtml(item) {
 }
 
 function renderList() {
-    const list = document.getElementById('sm-list');
+    const list = smSheetEl ? smSheetEl.querySelector('.sm-list') : null;
     if (!list) return;
     const store = getStore();
     if (!store || store.items.length === 0) {
@@ -884,7 +874,7 @@ function renderList() {
 }
 
 function bindListEvents(sheet) {
-    const list = sheet.querySelector('#sm-list');
+    const list = sheet.querySelector('.sm-list');
     list.addEventListener('click', async (e) => {
         const itemEl = e.target.closest('.sm-item');
         if (!itemEl) return;
@@ -969,12 +959,11 @@ function updateUI() {
     try {
         updateFab();
         const text = statusText();
-        const sheetStatus = document.getElementById('sm-sheet-status');
+        const sheetStatus = smSheetEl ? smSheetEl.querySelector('.sm-sheet-status') : null;
         if (sheetStatus) sheetStatus.textContent = text;
         const panelStatus = document.getElementById('sm_status');
         if (panelStatus) panelStatus.textContent = text;
-        const sheet = document.getElementById('sm-sheet');
-        if (sheet && sheet.style.display !== 'none') renderList();
+        if (smSheetEl) renderList();
     } catch (e) { /* UI is best-effort */ }
 }
 
