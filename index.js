@@ -629,13 +629,18 @@ function buildFabAndSheet() {
     const fab = document.createElement('div');
     fab.id = 'sm-fab';
     fab.title = 'Stockpile Memory';
+    // Critical styles are inlined so the button is visible even if style.css
+    // fails to load or is overridden by a theme.
+    fab.style.cssText = 'position:fixed;right:14px;bottom:96px;width:52px;height:52px;'
+        + 'border-radius:50%;background:#22242c;box-shadow:0 2px 10px rgba(0,0,0,0.5);'
+        + 'z-index:99999;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;';
     fab.innerHTML = `
-        <svg viewBox="0 0 48 48" class="sm-ring-svg">
-            <circle class="sm-ring-bg" cx="24" cy="24" r="20"></circle>
-            <circle class="sm-ring-fg" cx="24" cy="24" r="20"></circle>
+        <svg viewBox="0 0 48 48" class="sm-ring-svg" style="position:absolute;inset:2px;width:48px;height:48px;transform:rotate(-90deg);pointer-events:none">
+            <circle class="sm-ring-bg" cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="3.5"></circle>
+            <circle class="sm-ring-fg" cx="24" cy="24" r="20" fill="none" stroke="#7bc47f" stroke-width="3.5" stroke-linecap="round"></circle>
         </svg>
-        <span class="sm-fab-emoji">🧠</span>
-        <span class="sm-fab-badge" style="display:none"></span>`;
+        <span class="sm-fab-emoji" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;pointer-events:none">🧠</span>
+        <span class="sm-fab-badge" style="display:none;position:absolute;top:-2px;right:-2px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#e0a458;color:#1a1a1a;font-size:12px;font-weight:700;align-items:center;justify-content:center;pointer-events:none"></span>`;
     document.body.appendChild(fab);
     applyFabPosition();
     bindFabDrag(fab);
@@ -716,6 +721,23 @@ function bindFabDrag(fab) {
             openSheet();
         }
     });
+}
+
+function buildWandMenuEntry() {
+    if (document.getElementById('sm-wand-entry')) return;
+    const menu = document.getElementById('extensions_menu');
+    if (!menu) return;
+    const entry = document.createElement('div');
+    entry.id = 'sm-wand-entry';
+    entry.className = 'list-group-item flex-container flexGap5';
+    entry.style.cursor = 'pointer';
+    entry.innerHTML = '<div class="fa-solid fa-brain extensionsMenuExtensionButton"></div><span>Stockpile Memory</span>';
+    entry.addEventListener('click', () => {
+        openSheet();
+        const btn = document.getElementById('extensionsMenuButton');
+        if (btn) btn.click();
+    });
+    menu.appendChild(entry);
 }
 
 function openSheet() {
@@ -896,6 +918,9 @@ function updateUI() {
 // ─── Actions (shared by sheet + settings panel) ──────────────────────────────
 
 function bindActions() {
+    $(document).on('click', '.sm-act-open', function () {
+        openSheet();
+    });
     $(document).on('click', '.sm-act-apply', async function () {
         if (applyNow(true)) {
             await maybeConsolidate();
@@ -1019,10 +1044,11 @@ jQuery(async () => {
     } catch (e) {
         warn('settings template failed to load:', e);
     }
-    buildFabAndSheet();
-    bindSettings();
-    bindActions();
-    syncSettingsForm();
+    try { buildFabAndSheet(); } catch (e) { warn('buildFabAndSheet failed:', e); }
+    try { buildWandMenuEntry(); } catch (e) { warn('buildWandMenuEntry failed:', e); }
+    try { bindSettings(); } catch (e) { warn('bindSettings failed:', e); }
+    try { bindActions(); } catch (e) { warn('bindActions failed:', e); }
+    try { syncSettingsForm(); } catch (e) { warn('syncSettingsForm failed:', e); }
     ctx.eventSource.on(ctx.eventTypes.MESSAGE_RECEIVED, onMessageReceived);
     ctx.eventSource.on(ctx.eventTypes.CHAT_CHANGED, onChatChanged);
     onChatChanged();
