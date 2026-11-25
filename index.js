@@ -48,7 +48,7 @@ function reportDiag() {
         geo += ` | win=${window.innerWidth}x${window.innerHeight}`;
         if (window.visualViewport) geo += ` vv=${Math.round(window.visualViewport.width)}x${Math.round(window.visualViewport.height)}`;
     } catch { /* diag must never throw */ }
-    el.textContent = `diag v1.1.0: fab=${fabEl ? 'OK' : 'NG'} sheet=${sheetEl ? 'OK' : 'NG'} wand=${wand}`
+    el.textContent = `diag v1.1.1: fab=${fabEl ? 'OK' : 'NG'} sheet=${sheetEl ? 'OK' : 'NG'} wand=${wand}`
         + (smErrors.length ? ` | errors: ${smErrors.slice(-3).join(' ; ')}` : ' | errors: none')
         + geo;
 }
@@ -665,7 +665,11 @@ function buildFabAndSheet() {
     fab.title = 'Stockpile Memory';
     // Critical styles are inlined so the button is visible even if style.css
     // fails to load or is overridden by a theme.
-    fab.style.cssText = 'position:fixed;right:14px;bottom:96px;width:52px;height:52px;'
+    // Position is anchored from the top-left with viewport units, never with
+    // bottom/right: ST sets perspective/transform on <html>, which makes it
+    // the containing block for fixed elements, and on the phone layout that
+    // block collapses so bottom-anchored elements render above the screen.
+    fab.style.cssText = 'position:fixed;left:calc(100vw - 66px);top:calc(100vh - 148px);top:calc(100dvh - 148px);width:52px;height:52px;'
         + 'border-radius:50%;background:#22242c;box-shadow:0 2px 10px rgba(0,0,0,0.5);'
         + 'z-index:2147483647;display:block;visibility:visible;opacity:1;'
         + 'cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;';
@@ -725,10 +729,14 @@ function applyFabPosition() {
         delete s.iconTop;
         saveSettings();
     }
-    fab.style.left = 'auto';
-    fab.style.top = 'auto';
-    fab.style.right = '14px';
-    fab.style.bottom = '96px';
+    // Default spot: bottom-right, but expressed as a top-left anchor with
+    // viewport units (see buildFabAndSheet — bottom anchoring breaks on the
+    // phone layout because of ST's transformed <html> containing block).
+    fab.style.left = 'calc(100vw - 66px)';
+    fab.style.top = 'calc(100vh - 148px)';
+    fab.style.top = 'calc(100dvh - 148px)';
+    fab.style.right = 'auto';
+    fab.style.bottom = 'auto';
 }
 
 function bindFabDrag(fab) {
