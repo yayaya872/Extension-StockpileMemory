@@ -28,6 +28,10 @@ Decoupled long-term memory for SillyTavern (Marinara-style).
   to read the original messages it covers, or edit the summary text.
 - The sheet header reports whether the last generation actually included
   the memory block.
+- On phones, the 🧠 button is anchored from the top of the screen with
+  viewport units (v1.1.1+). SillyTavern sets a transform on `<html>` that
+  breaks bottom-anchored `position: fixed` elements on mobile layouts,
+  which previously pushed the button off-screen.
 
 ## Settings
 
